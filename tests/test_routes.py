@@ -37,7 +37,7 @@ class TestAccountService(TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        """Runs once after all tests"""
+        """Runs once before all tests"""
 
     def setUp(self):
         """Runs before each test"""
@@ -82,6 +82,22 @@ class TestAccountService(TestCase):
         response = self.client.get("/health")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.get_json()["status"], "OK")
+
+    def test_security_headers(self):
+        """It should add protective security headers"""
+        response = self.client.get("/")
+        self.assertEqual(response.headers.get("X-Content-Type-Options"), "nosniff")
+        self.assertEqual(response.headers.get("X-Frame-Options"), "SAMEORIGIN")
+
+    def test_cors_policy(self):
+        """It should allow a cross-origin request and return the CORS header"""
+        response = self.client.get(
+            "/health", headers={"Origin": "https://example.com"}
+        )
+        self.assertEqual(
+            response.headers.get("Access-Control-Allow-Origin"),
+            "https://example.com",
+        )
 
     def test_create_account(self):
         """It should Create a new Account and return its resource URL"""
