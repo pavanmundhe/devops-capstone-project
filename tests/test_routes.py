@@ -147,4 +147,10 @@ class TestAccountService(TestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(response.get_json()["error"], "Not Found")
 
+    def test_method_not_allowed(self):
+        """It should return 405 when an endpoint receives an unsupported method"""
+        response = self.client.post("/health")
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(response.get_json()["error"], "Method not Allowed")
+
     # ADD YOUR TEST CASES HERE ...
