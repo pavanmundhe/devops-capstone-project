@@ -37,7 +37,7 @@ class TestAccountService(TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        """Runs once before test suite"""
+        """Runs once after all tests"""
 
     def setUp(self):
         """Runs before each test"""
@@ -122,5 +122,29 @@ class TestAccountService(TestCase):
             content_type="test/html"
         )
         self.assertEqual(response.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+
+    def test_read_account(self):
+        """It should Read an existing Account"""
+        account = AccountFactory()
+        response = self.client.post(BASE_URL, json=account.serialize())
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        created = response.get_json()
+
+        response = self.client.get(f"{BASE_URL}/{created['id']}")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(data["id"], created["id"])
+        self.assertEqual(data["name"], account.name)
+        self.assertEqual(data["email"], account.email)
+        self.assertEqual(data["address"], account.address)
+        self.assertEqual(data["phone_number"], account.phone_number)
+        self.assertEqual(data["date_joined"], str(account.date_joined))
+
+    def test_read_account_not_found(self):
+        """It should return 404 when the Account does not exist"""
+        response = self.client.get(f"{BASE_URL}/0")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.get_json()["error"], "Not Found")
 
     # ADD YOUR TEST CASES HERE ...
