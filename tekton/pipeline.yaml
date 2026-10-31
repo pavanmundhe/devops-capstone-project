@@ -13,7 +13,7 @@ spec:
     - name: source
   steps:
     - name: clone
-      image: alpine/git:2.45.2
+      image: alpine/git:latest
       script: |
         set -eu
         rm -rf "$(workspaces.source.path)"/*
@@ -101,8 +101,6 @@ spec:
             oc apply -f "$(workspaces.pipeline-workspace.path)/deploy/kubernetes.yaml"
             oc rollout status deployment/postgres --timeout=180s
             oc rollout status deployment/accounts --timeout=180s
-        - name: VERSION
-          value: latest
       workspaces:
         - name: manifest-dir
           workspace: pipeline-workspace
