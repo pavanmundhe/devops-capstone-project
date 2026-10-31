@@ -108,7 +108,9 @@ class TestAccountService(TestCase):
         response = self.client.post(
             BASE_URL, data=str(account.serialize()), content_type="test/html"
         )
-        self.assertEqual(response.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+        self.assertEqual(
+            response.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE
+        )
 
     def test_list_accounts(self):
         """It should List all Accounts in the service"""
@@ -162,9 +164,7 @@ class TestAccountService(TestCase):
         response = self.client.delete(f"{BASE_URL}/{account.id}")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         read_response = self.client.get(f"{BASE_URL}/{account.id}")
-        self.assertEqual(
-            read_response.status_code, status.HTTP_404_NOT_FOUND
-        )
+        self.assertEqual(read_response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_delete_account_not_found(self):
         """It should return 404 when deleting a missing Account"""
