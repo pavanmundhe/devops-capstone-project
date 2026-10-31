@@ -7,7 +7,9 @@ Test cases can be run with the following:
 """
 import os
 import logging
+import importlib
 from unittest import TestCase
+from unittest.mock import patch
 from tests.factories import AccountFactory
 from service.common import status  # HTTP Status Codes
 from service.models import db, Account, init_db
@@ -71,6 +73,18 @@ class TestAccountService(TestCase):
     ######################################################################
     #  A C C O U N T   T E S T   C A S E S
     ######################################################################
+
+    def test_config_default_database_uri(self):
+        """It should build the default database URI when no URI is configured"""
+        from service import config
+
+        with patch.dict(os.environ, {}, clear=True):
+            reloaded_config = importlib.reload(config)
+            self.assertEqual(
+                reloaded_config.DATABASE_URI,
+                "postgresql://postgres:postgres@localhost:5432/postgres",
+            )
+        importlib.reload(config)
 
     def test_index(self):
         """It should get 200_OK from the Home Page"""
