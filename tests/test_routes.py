@@ -94,7 +94,8 @@ class TestAccountService(TestCase):
         self.assertEqual(created["address"], account.address)
         self.assertEqual(created["phone_number"], account.phone_number)
         self.assertEqual(created["date_joined"], str(account.date_joined))
-        self.assertTrue(response.headers["Location"].endswith(f"/accounts/{created['id']}"))
+        expected_url = f"/accounts/{created['id']}"
+        self.assertTrue(response.headers["Location"].endswith(expected_url))
 
     def test_bad_request(self):
         """It should reject incomplete account data"""
@@ -160,8 +161,10 @@ class TestAccountService(TestCase):
         account = self._create_accounts(1)[0]
         response = self.client.delete(f"{BASE_URL}/{account.id}")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertEqual(self.client.get(f"{BASE_URL}/{account.id}").status_code,
-                         status.HTTP_404_NOT_FOUND)
+        read_response = self.client.get(f"{BASE_URL}/{account.id}")
+        self.assertEqual(
+            read_response.status_code, status.HTTP_404_NOT_FOUND
+        )
 
     def test_delete_account_not_found(self):
         """It should return 404 when deleting a missing Account"""
