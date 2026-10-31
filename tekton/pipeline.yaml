@@ -1,38 +1,106 @@
-#
-# This pipeline needs the following tasks from Tekton Catalog
-#   - git-clone
-#   - flake8
-#
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: clone-source
+spec:
+  params:
+    - name: url
+      type: string
+    - name: revision
+      type: string
+      default: main
+  workspaces:
+    - name: source
+  steps:
+    - name: clone
+      image: alpine/git:latest
+      script: |
+        set -eu
+        rm -rf "$(workspaces.source.path)"/*
+        git clone --depth 1 --single-branch --branch "$(params.revision)" "$(params.url)" "$(workspaces.source.path)"
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: lint
+spec:
+  workspaces:
+    - name: source
+  steps:
+    - name: lint
+      image: python:3.9-slim
+      workingDir: $(workspaces.source.path)
+      script: |
+        set -eu
+        pip install --no-cache-dir -r requirements.txt
+        make lint
 ---
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
-metadata:  
+metadata:
   name: cd-pipeline
 spec:
   workspaces:
     - name: pipeline-workspace
   params:
     - name: repo-url
+      type: string
     - name: branch
+      type: string
       default: main
+    - name: image
+      type: string
+      default: cluster-registry:5000/accounts:1.0
   tasks:
-    - name: init
+    - name: clone
+      taskRef:
+        name: clone-source
       workspaces:
         - name: source
-          workspace: pipeline-workspace          
-      taskRef:
-        name: cleanup
-
-    - name: clone
-      workspaces:
-        - name: output
-          workspace: pipeline-workspace          
-      taskRef:
-        name: git-clone
+          workspace: pipeline-workspace
       params:
-      - name: url
-        value: $(params.repo-url)
-      - name: revision
-        value: $(params.branch)
+        - name: url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.branch)
+    - name: lint
       runAfter:
-        - init
+        - clone
+      taskRef:
+        name: lint
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+    - name: build-image
+      runAfter:
+        - lint
+      taskRef:
+        name: buildah
+        kind: ClusterTask
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      params:
+        - name: IMAGE
+          value: $(params.image)
+        - name: DOCKERFILE
+          value: Dockerfile
+        - name: CONTEXT
+          value: $(workspaces.pipeline-workspace.path)
+        - name: TLSVERIFY
+          value: "false"
+    - name: deploy
+      runAfter:
+        - build-image
+      taskRef:
+        name: openshift-client
+        kind: ClusterTask
+      params:
+        - name: SCRIPT
+          value: |
+            oc apply -f "$(workspaces.pipeline-workspace.path)/deploy/kubernetes.yaml"
+            oc rollout status deployment/postgres --timeout=180s
+            oc rollout status deployment/accounts --timeout=180s
+      workspaces:
+        - name: manifest-dir
+          workspace: pipeline-workspace
